@@ -263,7 +263,7 @@ class SimpleTFT(object):
                                       + self.bench_size 
                                       + self.shop_size
                                       + 1,
-                                  self.num_teams + self.board_size + int(np.log2(self.champ_copies))
+                                  self.num_teams + self.board_size + int(np.log2(self.champ_copies)) + 1
                                   )
         
         self.champion_pool = None
