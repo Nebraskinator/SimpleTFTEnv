@@ -1,11 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Thu Dec 14 13:01:33 2023
-
-@author: ruhe
-"""
-
-from env import SimpleTFT
+from simpletft.tft import SimpleTFT
 import numpy as np
 
 env = SimpleTFT()
