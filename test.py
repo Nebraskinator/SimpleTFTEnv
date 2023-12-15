@@ -2,7 +2,7 @@
 from simpletft.tft import SimpleTFT
 import numpy as np
 
-env = SimpleTFT()
+env = SimpleTFT('./log.txt')
 
 for i in range(10000):
     obs, taking_actions, dones, action_masks = env.reset()

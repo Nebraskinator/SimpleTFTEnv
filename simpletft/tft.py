@@ -3,9 +3,10 @@ from .champion import SimpleTFTChampion
 from .champion_pool import SimpleTFTChampionPool
 from .player import SimpleTFTPlayer
 import numpy as np
+import os
 
 class SimpleTFT(object):
-    def __init__(self):
+    def __init__(self, log_file_path: str=""):
         self.num_players = 2
         self.board_size = 3
         self.bench_size = 2
@@ -16,6 +17,10 @@ class SimpleTFT(object):
         self.actions_per_round = 5
         self.gold_per_round = 3
         self.interest_increment = 5
+        self.log_file_path = ""
+        
+        if log_file_path and os.path.exists(os.path.dirname(log_file_path)):
+            self.log_file_path = log_file_path
         
         self.observation_shape = (self.num_players, 
                                   self.board_size 
@@ -69,25 +74,31 @@ class SimpleTFT(object):
             prev = None
             for p in shuffle:
                 if prev:
-                    prev_pwr = prev.calculate_board_power()
+                    prev_pwr = self.players[prev].calculate_board_power()
                     pwr = self.players[p].calculate_board_power()
+                    if self.log_file_path:
+                        self.log_matchup(prev, prev_pwr, self.players[prev],
+                                         p, pwr, self.players[p])
                     if prev_pwr == pwr:
-                        prev.take_damage()
+                        self.players[prev].take_damage()
                         self.players[p].take_damage()
                     elif prev_pwr > pwr:
                         self.players[p].take_damage()
                     else:
-                        prev.take_damage()
+                        self.players[prev].take_damage()
                     prev = None
                 else:
-                    prev = self.players[p]
+                    prev = p
             if prev:
-                prev_pwr = prev.calculate_board_power()
+                prev_pwr = self.players[prev].calculate_board_power()
                 pwr = self.players[shuffle[0]].calculate_board_power()
+                if self.log_file_path:
+                    self.log_matchup(prev, prev_pwr, self.players[prev],
+                                     shuffle[0], pwr, self.players[shuffle[0]])
                 if prev_pwr == pwr:
-                    prev.take_damage()
+                    self.players[prev].take_damage()
                 elif pwr > prev_pwr:
-                    prev.take_damage()
+                    self.players[prev].take_damage()
             
             new_live_agents = [p for p, player in self.players.items() if player.is_alive()]
             for p in self.live_agents:
@@ -99,7 +110,38 @@ class SimpleTFT(object):
                     reward[p] += 1
         return reward
             
-      
+    def log_matchup(self, player1_name: str, 
+                    player1_power: int,
+                    player1: SimpleTFTPlayer, 
+                    player2_name: str, 
+                    player2_power: int,
+                    player2: SimpleTFTPlayer):
+                 
+        header = f"\t\t{player1_name} - Power: {player1_power} - HP: {player1.hp}\t\t\t\t{player2_name} - Power: {player2_power} - HP: {player2.hp}\n"
+        sub_header = f"{'Position':^10} | {'Team':^10} | {'Preferred Pos':^15} | {'Level':^10}\t|||\t"
+        sub_header += f"{'Position':^10} | {'Team':^10} | {'Preferred Pos':^15} | {'Level':^10}\n"
+        divider = '-' * (10 + 1 + 10 + 1 + 15 + 1 + 10 + 1) * 2 + "\n"
+    
+        log_entry = header + sub_header + divider
+    
+        for position, champ in enumerate(player1.board):
+            team, pref_pos, level = "None", "None", "None"
+            if champ:
+                team = champ.team
+                pref_pos = champ.preferred_position
+                level = champ.level
+            log_entry += f"{position:^10} | {team:^10} | {pref_pos:^15} | {level:^10}\t|||\t"
+            team, pref_pos, level = "None", "None", "None"
+            champ = player2.board[position]
+            if champ:
+                team = champ.team
+                pref_pos = champ.preferred_position
+                level = champ.level
+            log_entry += f"{position:^10} | {team:^10} | {pref_pos:^15} | {level:^10}\n"
+           
+        if self.log_file_path:
+            with open(self.log_file_path, 'a') as file:
+                file.write(log_entry + "\n")
     
     def make_dones(self) -> dict:
         if len(self.live_agents) > 1:
