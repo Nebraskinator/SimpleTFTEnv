@@ -41,6 +41,7 @@ class SimpleTFT(object):
         if not self.actions_until_combat:
             rewards = self.combat()
             self.actions_until_combat = self.actions_per_round
+            self.distribute_gold()
         else:
             rewards = {p: 0 for p in self.players}
         self.actions_until_combat -= 1
@@ -61,11 +62,16 @@ class SimpleTFT(object):
         for p, player in self.players.items():
             if not player.add_champion(self.champion_pool.sample(1)[0]):
                 player.add_gold(1)
-            player.add_gold(3)
+            player.add_gold(self.gold_per_round)
             player.refresh_shop()
             
         return self.make_player_observations(), self.make_acting_player_dict(), self.make_dones(), self.make_action_masks()
         
+    def distribute_gold(self):
+        for p, player in self.players.items():
+            if player.is_alive():
+                player.add_gold(self.gold_per_round + player.gold // self.interest_increment)
+    
     def combat(self) -> dict:
         self.live_agents = [p for p, player in self.players.items() if player.is_alive()]
         reward = {p: 0 for p in self.players}
