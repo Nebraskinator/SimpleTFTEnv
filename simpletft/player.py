@@ -145,12 +145,16 @@ class SimpleTFTPlayer(object):
             self.gold -= 1
     
     def sell_from_board(self, board_from):
-        self.champion_pool_ptr.add(self.board[board_from])
-        self.board[board_from] = None
+        if self.board[board_from]:
+            self.champion_pool_ptr.add(self.board[board_from])
+            self.gold += 2**self.board[board_from].level
+            self.board[board_from] = None
 
     def sell_from_bench(self, bench_from):
-        self.champion_pool_ptr.add(self.bench[bench_from])
-        self.bench[bench_from] = None
+        if self.bench[bench_from]:
+            self.champion_pool_ptr.add(self.bench[bench_from])
+            self.gold += 2**self.bench[bench_from].level
+            self.bench[bench_from] = None
         
     def calculate_board_power(self) -> int:
         pwr = 0

@@ -123,12 +123,21 @@ class SimpleTFT(object):
                     player2_power: int,
                     player2: SimpleTFTPlayer):
                  
-        header = f"\t\t{player1_name} - Power: {player1_power} - HP: {player1.hp}\t\t\t\t{player2_name} - Power: {player2_power} - HP: {player2.hp}\n"
+        header = f"\t{player1_name} - Power: {player1_power} - HP: {player1.hp} - Gold: {player1.gold}\t\t\t{player2_name} - Power: {player2_power} - HP: {player2.hp} - Gold: {player2.gold}\n"
+        p1_teams = [c.team for c in player1.bench if c]
+        p1_pos = [c.preferred_position for c in player1.bench if c]
+        p1_level = [c.level for c in player1.bench if c]
+        p2_teams = [c.team for c in player2.bench if c]
+        p2_pos = [c.preferred_position for c in player2.bench if c]
+        p2_level = [c.level for c in player2.bench if c]
+        p1 = zip(p1_teams, p1_pos, p1_level)
+        p2 = zip(p2_teams, p2_pos, p2_level)
+        bench_header = f"\t\t Bench: {[i for i in p1]}\t\t\t\t\t Bench: {[i for i in p2]}\n"
         sub_header = f"{'Position':^10} | {'Team':^10} | {'Preferred Pos':^15} | {'Level':^10}\t|||\t"
         sub_header += f"{'Position':^10} | {'Team':^10} | {'Preferred Pos':^15} | {'Level':^10}\n"
         divider = '-' * (10 + 1 + 10 + 1 + 15 + 1 + 10 + 1) * 2 + "\n"
     
-        log_entry = header + sub_header + divider
+        log_entry = header + bench_header + sub_header + divider
     
         for position, champ in enumerate(player1.board):
             team, pref_pos, level = "None", "None", "None"
