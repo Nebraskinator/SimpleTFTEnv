@@ -17,6 +17,7 @@ class SimpleTFTPlayer(object):
         self.action_positions = board_size + bench_size + shop_size + 1
         self.gold = 0
         self.hp = 10
+        self.killed = False
         self.idle_action = self.action_positions * (self.action_positions - 1) + 1
         
     def take_action(self, action: int):
@@ -50,7 +51,7 @@ class SimpleTFTPlayer(object):
                     pass
         
     def make_action_mask(self) -> np.array:
-        mask = np.zeros(self.idle_action + 1)
+        mask = np.zeros(self.action_positions * self.action_positions)
         if self.is_alive():
             action_from = 0
             for i_board, pos in enumerate(self.board):
@@ -60,12 +61,12 @@ class SimpleTFTPlayer(object):
                     if not self.bench_full():
                         for i_bench, bench_pos in enumerate(self.bench):
                             mask[action_from + len(self.board) + i_bench] = 1
-                    mask[action_from + len(self.board) + len(self.bench) + 1] = 1
+                    mask[action_from + len(self.board) + len(self.bench)] = 1
                 action_from += self.action_positions
             for i_bench, pos in enumerate(self.bench):
                 if pos:
                     mask[action_from:action_from + len(self.board)] = 1
-                    mask[action_from + len(self.board) + len(self.bench) + 1] = 1
+                    mask[action_from + len(self.board) + len(self.bench)] = 1
                 action_from += self.action_positions
             for i_shop, pos in enumerate(self.shop):
                 if pos and self.gold > 0:
@@ -178,6 +179,22 @@ class SimpleTFTPlayer(object):
         
     def is_alive(self) -> bool:
         return self.hp > 0
+    
+    def death_cleanup(self):
+        if not self.killed:
+            for i, c in enumerate(self.board):
+                if c:
+                    self.champion_pool_ptr.add(c)
+                    self.board[i] = None
+            for i, c in enumerate(self.bench):
+                if c:
+                    self.champion_pool_ptr.add(c)
+                    self.bench[i] = None
+            for i, c in enumerate(self.shop):
+                if c:
+                    self.champion_pool_ptr.add(c)
+                    self.shop[i] = None
+            self.killed = True
     
     def board_full(self) -> bool:
         for pos in self.board:

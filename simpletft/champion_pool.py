@@ -17,12 +17,13 @@ class SimpleTFTChampionPool(object):
             raise Exception("Cannot sample {} champions from a pool of size {}".format(num, len(self.champions)))
         sample = []
         for _ in range(num):
-            champ = np.random.choice(self.champions)
+            idx = np.random.randint(len(self.champions))
+            champ = self.champions[idx]
             sample.append(champ)
-            self.champions.remove(champ)
+            del self.champions[idx]
         return sample
             
-    def add(self, champ: SimpleTFTChampion):
+    def add(self, champ: SimpleTFTChampion):        
         if not champ.level:
             self.champions.append(champ)
         else:

@@ -18,6 +18,8 @@ class SimpleTFT(object):
         self.gold_per_round = 3
         self.interest_increment = 5
         self.log_file_path = ""
+        self.action_space = self.board_size + self.bench_size + self.shop_size + 1
+        self.action_space = self.action_space * self.action_space
         
         if log_file_path and os.path.exists(os.path.dirname(log_file_path)):
             self.log_file_path = log_file_path
@@ -48,7 +50,7 @@ class SimpleTFT(object):
         
         return self.make_player_observations(), rewards, self.make_acting_player_dict(), self.make_dones(), self.make_action_masks()
                 
-    def reset(self) -> (dict, dict, dict):
+    def reset(self, log_file_path: str="") -> (dict, dict, dict):
         self.champion_pool = SimpleTFTChampionPool(self.champ_copies,
                                                    self.num_teams,
                                                    self.board_size)
@@ -60,12 +62,17 @@ class SimpleTFT(object):
                         for p in self.live_agents}
         self.actions_until_combat = self.actions_per_round - 1
         for p, player in self.players.items():
-            if not player.add_champion(self.champion_pool.sample(1)[0]):
+            champ = self.champion_pool.sample(1)[0]
+            if not player.add_champion(champ):
                 player.add_gold(1)
-            player.add_gold(self.gold_per_round)
+                self.champion_pool.add(champ)
+            player.add_gold(self.gold_per_round + 1)
             player.refresh_shop()
+        
+        if log_file_path:
+            self.log_file_path = log_file_path
             
-        return self.make_player_observations(), self.make_acting_player_dict(), self.make_dones(), self.make_action_masks()
+        return self.make_player_observations(), self.make_acting_player_dict(), self.make_action_masks()
         
     def post_combat(self):
         for p, player in self.players.items():
@@ -75,7 +82,12 @@ class SimpleTFT(object):
             if player.is_alive():
                 player.add_gold(self.gold_per_round + min(player.gold // self.interest_increment, 5) + 1)
                 player.refresh_shop()
-    
+        
+    def distribute_gold(self):
+        for p, player in self.players.items():
+            if player.is_alive():
+                player.add_gold(self.gold_per_round + player.gold // self.interest_increment)
+                   
     def combat(self) -> dict:
         self.live_agents = [p for p, player in self.players.items() if player.is_alive()]
         reward = {p: 0 for p in self.players}
@@ -120,6 +132,9 @@ class SimpleTFT(object):
                     reward[p] += 1
         return reward
             
+    def action_space_size(self):
+        return self.action_space
+    
     def log_matchup(self, player1_name: str, 
                     player1_power: int,
                     player1: SimpleTFTPlayer, 
@@ -142,7 +157,6 @@ class SimpleTFT(object):
         bench_header = f"\t Bench: {p1}" + "\t" * ts + f" Bench: {p2}\n"
         sub_header = f"{'Position':^10} | {'Team':^10} | {'Preferred Pos':^15} | {'Level':^10}\t|||\t"
         sub_header += f"{'Position':^10} | {'Team':^10} | {'Preferred Pos':^15} | {'Level':^10}\n"
-        divider = '-' * (10 + 1 + 10 + 1 + 15 + 1 + 10 + 1) * 2 + "\n"
         divider = '-' * (10 + 1 + 10 + 1 + 15 + 1 + 10 + 1) * 2 + "\n"
     
         log_entry = header + bench_header + sub_header + divider
