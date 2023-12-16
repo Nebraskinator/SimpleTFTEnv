@@ -82,11 +82,6 @@ class SimpleTFT(object):
             if player.is_alive():
                 player.add_gold(self.gold_per_round + min(player.gold // self.interest_increment, 5) + 1)
                 player.refresh_shop()
-        
-    def distribute_gold(self):
-        for p, player in self.players.items():
-            if player.is_alive():
-                player.add_gold(self.gold_per_round + player.gold // self.interest_increment)
                    
     def combat(self) -> dict:
         self.live_agents = [p for p, player in self.players.items() if player.is_alive()]

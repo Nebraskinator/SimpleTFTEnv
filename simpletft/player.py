@@ -46,7 +46,7 @@ class SimpleTFTPlayer(object):
                 self.purchase_from_shop(shop_from)
             else:
                 if action_to == 0:
-                    self.refresh_shop
+                    self.refresh_shop()
                 if action_to == 1:
                     pass
         
