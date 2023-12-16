@@ -41,7 +41,7 @@ class SimpleTFT(object):
         if not self.actions_until_combat:
             rewards = self.combat()
             self.actions_until_combat = self.actions_per_round
-            self.distribute_gold()
+            self.post_combat()
         else:
             rewards = {p: 0 for p in self.players}
         self.actions_until_combat -= 1
@@ -67,10 +67,14 @@ class SimpleTFT(object):
             
         return self.make_player_observations(), self.make_acting_player_dict(), self.make_dones(), self.make_action_masks()
         
-    def distribute_gold(self):
+    def post_combat(self):
+        for p, player in self.players.items():
+            if not player.is_alive():
+                player.death_cleanup()
         for p, player in self.players.items():
             if player.is_alive():
-                player.add_gold(self.gold_per_round + player.gold // self.interest_increment)
+                player.add_gold(self.gold_per_round + min(player.gold // self.interest_increment, 5) + 1)
+                player.refresh_shop()
     
     def combat(self) -> dict:
         self.live_agents = [p for p, player in self.players.items() if player.is_alive()]
@@ -138,6 +142,7 @@ class SimpleTFT(object):
         bench_header = f"\t Bench: {p1}" + "\t" * ts + f" Bench: {p2}\n"
         sub_header = f"{'Position':^10} | {'Team':^10} | {'Preferred Pos':^15} | {'Level':^10}\t|||\t"
         sub_header += f"{'Position':^10} | {'Team':^10} | {'Preferred Pos':^15} | {'Level':^10}\n"
+        divider = '-' * (10 + 1 + 10 + 1 + 15 + 1 + 10 + 1) * 2 + "\n"
         divider = '-' * (10 + 1 + 10 + 1 + 15 + 1 + 10 + 1) * 2 + "\n"
     
         log_entry = header + bench_header + sub_header + divider
