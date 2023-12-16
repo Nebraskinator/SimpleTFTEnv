@@ -132,7 +132,10 @@ class SimpleTFT(object):
         p2_level = [c.level for c in player2.bench if c]
         p1 = zip(p1_teams, p1_pos, p1_level)
         p2 = zip(p2_teams, p2_pos, p2_level)
-        bench_header = f"\t\t Bench: {[i for i in p1]}\t\t\t\t\t Bench: {[i for i in p2]}\n"
+        p1 = [i for i in p1]
+        p2 = [i for i in p2]
+        ts = 6 - int(1.4 * len(p1))
+        bench_header = f"\t Bench: {p1}" + "\t" * ts + f" Bench: {p2}\n"
         sub_header = f"{'Position':^10} | {'Team':^10} | {'Preferred Pos':^15} | {'Level':^10}\t|||\t"
         sub_header += f"{'Position':^10} | {'Team':^10} | {'Preferred Pos':^15} | {'Level':^10}\n"
         divider = '-' * (10 + 1 + 10 + 1 + 15 + 1 + 10 + 1) * 2 + "\n"
