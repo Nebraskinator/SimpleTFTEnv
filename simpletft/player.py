@@ -133,7 +133,7 @@ class SimpleTFTPlayer(object):
                 for match_i, match_pos in enumerate(self.bench):
                     if pos.match(match_pos):
                         pos.level_up()
-                        self.bench[match_i + board_i + 1] = None
+                        self.bench[match_i] = None
                         self.find_matches()
                         return                    
         for bench_i, pos in enumerate(self.bench):
