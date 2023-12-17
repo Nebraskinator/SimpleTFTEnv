@@ -9,7 +9,7 @@ class SimpleTFTChampion(object):
         self.team = team
         self.level = level
         
-    def __eq__(self, other):
+    def match(self, other):
         if isinstance(other, self.__class__):
             return all([self.preferred_position == other.preferred_position,
                         self.team == other.team,

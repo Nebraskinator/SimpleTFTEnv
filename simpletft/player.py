@@ -121,14 +121,40 @@ class SimpleTFTPlayer(object):
                 self.gold -= 1
                 self.shop[shop_from] = None
         
+    def find_matches(self):
+        for board_i, pos in enumerate(self.board):
+            if pos:
+                for match_i, match_pos in enumerate(self.board[board_i + 1:]):
+                    if pos.match(match_pos):
+                        pos.level_up()
+                        self.board[match_i + board_i + 1] = None
+                        self.find_matches()
+                        return
+                for match_i, match_pos in enumerate(self.bench):
+                    if pos.match(match_pos):
+                        pos.level_up()
+                        self.bench[match_i + board_i + 1] = None
+                        self.find_matches()
+                        return                    
+        for bench_i, pos in enumerate(self.bench):
+            if pos:
+                for match_i, match_pos in enumerate(self.bench[bench_i + 1:]):
+                    if match_pos and pos.match(match_pos):
+                        pos.level_up()
+                        self.bench[match_i + bench_i + 1] = None
+                        self.find_matches()
+                        return          
+        
     def add_champion(self, champ: SimpleTFTChampion) -> bool:
             for pos in self.board:
-                if pos and pos == champ:
+                if pos and pos.match(champ):
                     pos.level_up()
+                    self.find_matches()
                     return True
             for pos in self.bench:
-                if pos and pos == champ:
+                if pos and pos.match(champ):
                     pos.level_up()
+                    self.find_matches()
                     return  True 
             for i, pos in enumerate(self.bench):
                 if not pos:
