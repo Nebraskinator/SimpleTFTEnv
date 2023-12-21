@@ -18,7 +18,7 @@ The simple TFT game encapsulates the following key mechanics:
 
 ### Winning Condition
 
-The winner of a combat is based on the number and level of champions on the board, the number of champions sharing a team, the number of champions occupying their preferred position, and the level of each champion.
+The winner of a combat is based on the number and level of champions on the board, the number of champions sharing a team, and the number of champions occupying their preferred position.
 
 ## Interface
 
