@@ -11,7 +11,6 @@ class SimpleTFT(object):
         Initialize the SimpleTFT game with configurable settings.
 
         :param config: A dictionary containing game configuration settings.
-        :param log_file_path: Path for the log file, if logging is required.
         :raises ValueError: If any configuration values are invalid.
         """
         # Default values can be set here or obtained from the config
