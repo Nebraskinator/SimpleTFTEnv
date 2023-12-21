@@ -18,7 +18,7 @@ The simple TFT game encapsulates the following key mechanics:
 
 ### Winning Condition
 
-The winner of a game is decided based on the performance of champions in battles, strategic management of resources (gold, champions), and the player's ability to create powerful synergies on their board.
+The winner of a combat is based on the number and level of champions on the board, the number of champions sharing a team, and the level of each champion.
 
 ## Interface
 
