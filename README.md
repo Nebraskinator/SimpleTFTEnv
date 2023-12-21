@@ -48,8 +48,6 @@ Optional logging to record players states for each combat matchup:
 
 ### Installation
 
-Provide steps for installing and setting up the environment. This might include cloning the repository, installing dependencies, etc.
-
 ```bash
 git clone https://github.com/Nebraskinator/SimpleTFTEnv
 cd SimpleTFTEnv
