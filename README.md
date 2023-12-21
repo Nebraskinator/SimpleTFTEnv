@@ -38,7 +38,7 @@ Provide steps for installing and setting up the environment. This might include 
 
 ```bash
 # Example installation steps
-git clone https://github.com/your-repository.git
-cd your-repository
+git clone https://github.com/Nebraskinator/SimpleTFTEnv
+cd SimpleTFTEnv
 pip install -r requirements.txt
 python test.py
