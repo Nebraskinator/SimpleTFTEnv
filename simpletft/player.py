@@ -560,18 +560,31 @@ class SimpleTFTPlayer(object):
         return False  # Bench is full
     
     def _log_state(self):
+        """
+        Log the current state of the player, including gold, health, and positions of champions.
+        """
         self.__log.append(f"gold: {self.__gold}, hp: {self.__hp}")
-        for i, pos in enumerate(self.__board):
+        self._log_positions('board', self.__board)
+        self._log_positions('bench', self.__bench)
+        self._log_positions('shop', self.__shop)
+        
+    def _log_positions(self, position_type, positions):
+        """
+        Log the positions (board, bench, shop) of the player.
+
+        :param position_type: Type of the position (e.g., 'board', 'bench', 'shop').
+        :param positions: The positions to be logged.
+        """
+        for i, pos in enumerate(positions):
             pos_description = (pos.team, pos.preferred_position, pos.level) if pos else None
-            self.__log.append(f"board position {i}: {pos_description}")
-        for i, pos in enumerate(self.__bench):
-            pos_description = (pos.team, pos.preferred_position, pos.level) if pos else None
-            self.__log.append(f"bench position {i}: {pos_description}")
-        for i, pos in enumerate(self.__shop):
-            pos_description = (pos.team, pos.preferred_position, pos.level) if pos else None
-            self.__log.append(f"shop position {i}: {pos_description}")
+            self.__log.append(f"{position_type} position {i}: {pos_description}")
             
     def dump_log(self):
+        """
+        Dump the accumulated logs and reset the log.
+        
+        :return: A list of logged messages.
+        """
         self._log_state()
         logs = self.__log
         self.__log = []

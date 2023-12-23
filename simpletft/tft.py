@@ -467,10 +467,18 @@ class SimpleTFT(object):
             observation[ax + champ.level] = 1
         return observation 
     
-    def _log_player_states(self):     
+    def _log_player_states(self):  
+        """
+        Log the states of all players.
+ 
+        This method goes through each player, collects their state logs, and appends them to the game's log.
+        """
         for p, player in self.__players.items():
-            player_dump = player.dump_log()            
-            self.__log += [f"{p}: " + l for l in player_dump]
+            try:
+                player_dump = player.dump_log()  # Assuming 'dump_log' is a method in SimpleTFTPlayer class
+                self.__log.extend([f"{p}: " + l for l in player_dump])
+            except AttributeError as e:
+                print(f"Error while dumping log for player {p}: {e}")
     
     def _dump_logs(self):
         # Ensure the log file path is set
@@ -485,6 +493,6 @@ class SimpleTFT(object):
                     file.write(line + "\n")
         except IOError as e:
             print(f"Failed to write to log file: {e}")
-        
-        self.__log = []
+        finally:
+            self.__log = [] # Reset the log regardless of success or failure
 
