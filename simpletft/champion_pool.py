@@ -6,13 +6,15 @@ class SimpleTFTChampionPool(object):
     def __init__(self, 
                  champ_copies: int, 
                  num_teams: int, 
-                 num_positions: int):
+                 num_positions: int,
+                 debug : bool = False):
         """
         Initialize the Champion Pool with a specified number of copies, teams, and positions.
 
         :param champ_copies: Number of copies for each champion.
         :param num_teams: Number of teams in the pool.
         :param num_positions: Number of different positions in the pool.
+        :param debug: Verbose logging enabled.
         """
         self.__champions = [SimpleTFTChampion(pos, team, 0) 
                             for team in range(num_teams) 

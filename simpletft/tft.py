@@ -24,8 +24,9 @@ class SimpleTFT(object):
         self.__actions_per_round = config.get('actions_per_round', 5)
         self.__gold_per_round = config.get('gold_per_round', 3)
         self.__interest_increment = config.get('interest_increment', 5)
+        self.__debug = config.get('debug', False)
         
-        valid_reward_structures = ['game_placement', 'damage']
+        valid_reward_structures = ['game_placement', 'damage', 'mixed']
         self.__reward_structure = config.get('reward_structure', 'game_placement')  # Default to 'game_placement'
         if self.__reward_structure not in valid_reward_structures:
             raise ValueError(f"Invalid reward structure. Must be one of {valid_reward_structures}")
@@ -71,6 +72,7 @@ class SimpleTFT(object):
         self.__live_agents = ['player_{}'.format(i) for i in range(self.__num_players)]
         self.__players = {}
         self.__actions_until_combat = 0
+        self.__log = []
         self.__log_file_path = ""
         
     @property
@@ -112,7 +114,13 @@ class SimpleTFT(object):
                 raise ValueError(f"Player {p} is not part of the game.")
             self.__players[p].take_action(a)
 
+        if self.__debug:
+            self._log_player_states()
+            self._dump_logs()
+
         if not self.__actions_until_combat:
+            if self.__debug:
+                self.__log.append("combat round")
             rewards = self.combat()
             self.__actions_until_combat = self.__actions_per_round
             self.post_combat()
@@ -132,12 +140,14 @@ class SimpleTFT(object):
         """
         self.__champion_pool = SimpleTFTChampionPool(self.__champ_copies,
                                                      self.__num_teams,
-                                                     self.__board_size)
+                                                     self.__board_size,
+                                                     debug=self.__debug)
         self.__live_agents = ['player_{}'.format(i) for i in range(self.__num_players)]
         self.__players = {p: SimpleTFTPlayer(self.__champion_pool, 
                                              self.__board_size,
                                              self.__bench_size,
-                                             self.__shop_size)
+                                             self.__shop_size,
+                                             debug=self.__debug)
                           for p in self.__live_agents}
         self.__actions_until_combat = self.__actions_per_round - 1
 
@@ -148,6 +158,11 @@ class SimpleTFT(object):
                 self.__champion_pool.add(champ)
             player.add_gold(self.__gold_per_round + 1)
             player.refresh_shop()
+            
+        if self.__debug:
+            if self.__log:
+                self._dump_logs()
+            self._log_player_states()
 
         if log_file_path:
             if os.path.exists(os.path.dirname(log_file_path)) or os.path.isdir(os.path.dirname(log_file_path)):
@@ -180,7 +195,7 @@ class SimpleTFT(object):
         combat_results = {}
 
         if len(self.__live_agents) > 1:
-            shuffle = np.random.choice(self.__live_agents, len(self.__live_agents), replace=False).tolist()
+            shuffle = np.random.choice(self.__live_agents, len(self.__live_agents), replace=False).tolist() if len(self.__live_agents) > 2 else self.__live_agents.copy()
             prev = None
 
             for p in shuffle:
@@ -196,6 +211,10 @@ class SimpleTFT(object):
 
             self._update_live_agents()
             self._assign_rewards_based_on_structure(rewards, combat_results)
+
+        if self.__debug:
+            for p, reward in rewards.items():
+                self.__log.append(f"{p}: received {reward} reward")
 
         return rewards
 
@@ -264,10 +283,10 @@ class SimpleTFT(object):
             :param rewards: The rewards dictionary to be updated.
             :param combat_results: The combat results for reward calculation.
             """
-            if self.__reward_structure == 'damage':
+            if self.__reward_structure in ('damage', 'mixed'):
                 for p, result in combat_results.items():
                     rewards[p] += result
-            elif self.__reward_structure == 'game_placement':
+            if self.__reward_structure in ('game_placement', 'mixed'):
                 loss_penalty = (len(self.__live_agents) >= self.__num_players // 2) * -1
                 for p in combat_results.keys():
                     if p not in self.__live_agents:
@@ -447,4 +466,25 @@ class SimpleTFT(object):
             ax += self.__board_size
             observation[ax + champ.level] = 1
         return observation 
+    
+    def _log_player_states(self):     
+        for p, player in self.__players.items():
+            player_dump = player.dump_log()            
+            self.__log += [f"{p}: " + l for l in player_dump]
+    
+    def _dump_logs(self):
+        # Ensure the log file path is set
+        if not self.__log_file_path:
+            print("Log file path is not set. Cannot log matchup.")
+            return
+
+        # Writing to the log file
+        try:
+            with open(self.__log_file_path, 'a') as file:
+                for line in self.__log:
+                    file.write(line + "\n")
+        except IOError as e:
+            print(f"Failed to write to log file: {e}")
+        
+        self.__log = []
 

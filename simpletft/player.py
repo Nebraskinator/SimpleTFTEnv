@@ -9,7 +9,8 @@ class SimpleTFTPlayer(object):
                      champion_pool_ptr: SimpleTFTChampionPool, 
                      board_size: int, 
                      bench_size: int, 
-                     shop_size: int):
+                     shop_size: int,
+                     debug: bool = False):
             """
             Initialize a SimpleTFT player with a reference to a champion pool, and sizes for board, bench, and shop.
     
@@ -17,6 +18,7 @@ class SimpleTFTPlayer(object):
             :param board_size: The size of the player's board.
             :param bench_size: The size of the player's bench.
             :param shop_size: The size of the player's shop.
+            :param debug: Verbose logging enabled.
             :raises ValueError: If any size values are non-positive integers.
             """
             if not all(isinstance(x, int) and x > 0 for x in [board_size, bench_size, shop_size]):
@@ -31,6 +33,10 @@ class SimpleTFTPlayer(object):
             self.__hp = 10
             self.__killed = False
             self.__idle_action = self.__action_positions * (self.__action_positions - 1) + 1
+            self.__debug = debug
+            self.__log = []
+            if self.__debug:
+                self._log_state()
         
     @property
     def gold(self):
@@ -67,7 +73,10 @@ class SimpleTFTPlayer(object):
         if self.is_alive():
             action_from = action // self.__action_positions
             action_to = action % self.__action_positions
-
+            
+            if self.__debug:
+                self.__log.append(f"action: {action}, action from: {action_from}, action to: {action_to}")
+            
             if action_from < len(self.__board):
                 self._process_board_actions(action_from, action_to)
             elif action_from < len(self.__board) + len(self.__bench):
@@ -219,6 +228,12 @@ class SimpleTFTPlayer(object):
         to_champ = self.__board[board_to]
         self.__board[board_from] = to_champ
         self.__board[board_to] = from_champ
+        
+        if self.__debug:
+            from_champ = (from_champ.team, from_champ.preferred_position, from_champ.level) if from_champ else from_champ
+            to_champ = (to_champ.team, to_champ.preferred_position, to_champ.level) if to_champ else to_champ
+            self.__log.append(f"moved {from_champ} from board position {board_from} to board position {board_to}")
+            self.__log.append(f"moved {to_champ} from board position {board_to} to board position {board_from}")
 
     def move_board_to_bench(self, board_from: int, bench_to: int):
         """
@@ -235,6 +250,12 @@ class SimpleTFTPlayer(object):
         to_champ = self.__bench[bench_to]
         self.__board[board_from] = to_champ
         self.__bench[bench_to] = from_champ
+        
+        if self.__debug:
+            from_champ = (from_champ.team, from_champ.preferred_position, from_champ.level) if from_champ else from_champ
+            to_champ = (to_champ.team, to_champ.preferred_position, to_champ.level) if to_champ else to_champ
+            self.__log.append(f"moved {from_champ} from board position {board_from} to bench position {bench_to}")
+            self.__log.append(f"moved {to_champ} from bench position {bench_to} to board position {board_from}")
 
     def move_bench_to_board(self, bench_from: int, board_to: int):
         """
@@ -251,6 +272,12 @@ class SimpleTFTPlayer(object):
         to_champ = self.__board[board_to]
         self.__bench[bench_from] = to_champ
         self.__board[board_to] = from_champ
+        
+        if self.__debug:
+            from_champ = (from_champ.team, from_champ.preferred_position, from_champ.level) if from_champ else from_champ
+            to_champ = (to_champ.team, to_champ.preferred_position, to_champ.level) if to_champ else to_champ
+            self.__log.append(f"moved {from_champ} from bench position {bench_from} to board position {board_to}")
+            self.__log.append(f"moved {to_champ} from board position {board_to} to bench position {bench_from}")
 
     def move_bench_to_bench(self, bench_from: int, bench_to: int):
         """
@@ -267,6 +294,12 @@ class SimpleTFTPlayer(object):
         to_champ = self.__bench[bench_to]
         self.__bench[bench_from] = to_champ
         self.__bench[bench_to] = from_champ
+        
+        if self.__debug:
+            from_champ = (from_champ.team, from_champ.preferred_position, from_champ.level) if from_champ else from_champ
+            to_champ = (to_champ.team, to_champ.preferred_position, to_champ.level) if to_champ else to_champ
+            self.__log.append(f"moved {from_champ} from bench position {bench_from} to bench position {bench_to}")
+            self.__log.append(f"moved {to_champ} from bench position {bench_to} to bench position {bench_from}")
 
     def purchase_from_shop(self, shop_from: int):
         """
@@ -286,6 +319,11 @@ class SimpleTFTPlayer(object):
         if self.add_champion(self.__shop[shop_from]):
             self.__gold -= 1
             self.__shop[shop_from] = None
+            if self.__debug:
+                self.__log.append(f"purchased champion from shop position {shop_from}")
+        else:
+            if self.__debug:
+                self.__log.append(f"unable to purchase champion from shop position {shop_from}")            
 
     def find_matches(self):
         """
@@ -318,6 +356,8 @@ class SimpleTFTPlayer(object):
             if match_pos and champion.match(match_pos):
                 champion.level_up()
                 lst[i] = None
+                if self.__debug:
+                    self.__log.append(f"leveled {(champion.team, champion.preferred_position)} to level {champion.level} after finding match")
                 self.find_matches()  # Recursively search for new matches
                 return True
         return False
@@ -332,20 +372,28 @@ class SimpleTFTPlayer(object):
         for pos in self.__board:
             if pos and pos.match(champ):
                 pos.level_up()
+                if self.__debug:
+                    self.__log.append(f"added {(champ.team, champ.preferred_position, champ.level)} by leveling {(pos.team, pos.preferred_position, pos.level)} on board")
                 self.find_matches()
                 return True
 
         for pos in self.__bench:
             if pos and pos.match(champ):
                 pos.level_up()
+                if self.__debug:
+                    self.__log.append(f"added {(champ.team, champ.preferred_position, champ.level)} by leveling {(pos.team, pos.preferred_position, pos.level)} on bench")
                 self.find_matches()
                 return True
 
         for i, pos in enumerate(self.__bench):
             if not pos:
                 self.__bench[i] = champ
+                if self.__debug:
+                    self.__log.append(f"added {(champ.team, champ.preferred_position, champ.level)} to bench")
                 return True
-
+            
+        if self.__debug:
+            self.__log.append(f"unable to add {(champ.team, champ.preferred_position, champ.level)} to bench")
         return False  # No space or match found
         
     def refresh_shop(self):
@@ -363,6 +411,9 @@ class SimpleTFTPlayer(object):
 
         self.__shop = self.__champion_pool_ptr.sample(len(self.__shop))
         self.__gold -= 1
+        
+        if self.__debug:
+            self.__log.append("refreshed shop")
 
     def sell_from_board(self, board_from: int):
         """
@@ -377,6 +428,8 @@ class SimpleTFTPlayer(object):
         if self.__board[board_from]:
             self.__champion_pool_ptr.add(self.__board[board_from])
             self.__gold += 2 ** self.__board[board_from].level
+            if self.__debug:
+                self.__log.append(f"sold {(self.__board[board_from].team, self.__board[board_from].preferred_position, self.__board[board_from].level)} from board position {board_from} for {2 ** self.__board[board_from].level} gold")
             self.__board[board_from] = None
 
     def sell_from_bench(self, bench_from: int):
@@ -392,6 +445,8 @@ class SimpleTFTPlayer(object):
         if self.__bench[bench_from]:
             self.__champion_pool_ptr.add(self.__bench[bench_from])
             self.__gold += 2 ** self.__bench[bench_from].level
+            if self.__debug:
+                self.__log.append(f"sold {(self.__bench[bench_from].team, self.__bench[bench_from].preferred_position, self.__bench[bench_from].level)} from bench position {bench_from} for {2 ** self.__bench[bench_from].level} gold")
             self.__bench[bench_from] = None
         
     def calculate_board_power(self) -> int:
@@ -425,6 +480,8 @@ class SimpleTFTPlayer(object):
         if amount < 0:
             raise ValueError("Cannot add a negative amount of gold")
         self.__gold += amount
+        if self.__debug:
+            self.__log.append(f"added {amount} gold")
 
     def take_damage(self, amount: int = 1):
         """
@@ -436,6 +493,8 @@ class SimpleTFTPlayer(object):
         if amount < 0:
             raise ValueError("Cannot inflict negative damage")
         self.__hp -= amount
+        if self.__debug:
+            self.__log.append(f"took {amount} damage")
 
     def is_alive(self) -> bool:
         """
@@ -499,3 +558,21 @@ class SimpleTFTPlayer(object):
                 self.__bench[i] = champ
                 return True
         return False  # Bench is full
+    
+    def _log_state(self):
+        self.__log.append(f"gold: {self.__gold}, hp: {self.__hp}")
+        for i, pos in enumerate(self.__board):
+            pos_description = (pos.team, pos.preferred_position, pos.level) if pos else None
+            self.__log.append(f"board position {i}: {pos_description}")
+        for i, pos in enumerate(self.__bench):
+            pos_description = (pos.team, pos.preferred_position, pos.level) if pos else None
+            self.__log.append(f"bench position {i}: {pos_description}")
+        for i, pos in enumerate(self.__shop):
+            pos_description = (pos.team, pos.preferred_position, pos.level) if pos else None
+            self.__log.append(f"shop position {i}: {pos_description}")
+            
+    def dump_log(self):
+        self._log_state()
+        logs = self.__log
+        self.__log = []
+        return logs

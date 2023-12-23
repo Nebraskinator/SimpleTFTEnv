@@ -5,8 +5,9 @@ import numpy as np
 
 if __name__ == "__main__":
 
-    config = {'reward_structure' : 'damage'}
-    log_file_dir = ""
+    config = {'reward_structure' : 'mixed',
+              'debug' : True}
+    log_file_dir = "./"
     env = SimpleTFT(config)
     num_games = 100
     for i in range(num_games):
