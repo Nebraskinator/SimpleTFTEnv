@@ -54,7 +54,7 @@ class SimpleTFTChampion(object):
         :return: Boolean, True if all attributes match, False otherwise.
         """
         if isinstance(other, self.__class__):
-            return all((self.__preferred_position == other.__preferred_position,
-                        self.__team == other.__team,
-                        self.__level == other.__level))
+            return all((self.__preferred_position == other.preferred_position,
+                        self.__team == other.team,
+                        self.__level == other.level))
         return False

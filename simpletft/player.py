@@ -89,7 +89,7 @@ class SimpleTFTPlayer(object):
         elif action_to < len(self.__board) + len(self.__bench):
             bench_dest = action_to - len(self.__board)
             self.move_board_to_bench(action_from, bench_dest)
-        elif action_to < self.__action_positions - 1:
+        elif action_to == len(self.__board) + len(self.__bench):
             self.sell_from_board(action_from)
 
     def _process_bench_actions(self, action_from: int, action_to: int):
@@ -105,7 +105,7 @@ class SimpleTFTPlayer(object):
         elif action_to < len(self.__board) + len(self.__bench):
             bench_dest = action_to - len(self.__board)
             self.move_bench_to_bench(bench_from, bench_dest)
-        elif action_to < self.__action_positions - 1:
+        elif action_to == len(self.__board) + len(self.__bench):
             self.sell_from_bench(bench_from)
 
     def _process_shop_actions(self, action_from: int, action_to: int):
@@ -165,11 +165,8 @@ class SimpleTFTPlayer(object):
         :param action_from: The starting action position.
         :param i_board: The index of the board position being updated.
         """
-        mask[action_from:action_from + len(self.__board)] = 1
+        mask[action_from:action_from + len(self.__board) + len(self.__bench) + 1] = 1
         mask[action_from + i_board] = 0  # Can't move to the same position
-        if not self.bench_full():
-            for i_bench in range(len(self.__bench)):
-                mask[action_from + len(self.__board) + i_bench] = 1
         mask[action_from + len(self.__board) + len(self.__bench)] = 1  # Sell action
 
     def _update_mask_for_bench(self, mask, action_from):
@@ -299,7 +296,9 @@ class SimpleTFTPlayer(object):
             if pos:
                 if self._process_match_in_list(self.__board, pos, start_index=board_i + 1):
                     return  # Restart search after finding a match
-
+                if self._process_match_in_list(self.__bench, pos):
+                    return  # Restart search after finding a match
+                
         # Searching for matches on the bench
         for bench_i, pos in enumerate(self.__bench):
             if pos:

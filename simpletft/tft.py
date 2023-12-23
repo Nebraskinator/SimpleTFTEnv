@@ -91,6 +91,15 @@ class SimpleTFT(object):
         """
         return self.__observation_shape
         
+    @property
+    def num_players(self):
+        """
+        Get the number of players in the game.
+    
+        :return: int 
+        """
+        return self.__num_players
+    
     def step(self, action: dict) -> (dict, dict, dict, dict, dict):
         """
         Process a game step given the actions of each player.
