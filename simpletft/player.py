@@ -28,11 +28,10 @@ class SimpleTFTPlayer(object):
             self.__board = [None for _ in range(board_size)]
             self.__bench = [None for _ in range(bench_size)]
             self.__shop = [None for _ in range(shop_size)]
-            self.__action_positions = board_size + bench_size + shop_size + 1
+            self.__action_positions = self.calculate_action_space_size(len(self.__board), len(self.__bench), len(self.__shop))
             self.__gold = 0
             self.__hp = 10
             self.__killed = False
-            self.__idle_action = self.__action_positions * (self.__action_positions - 1) + 1
             self.__debug = debug
             self.__log = []
             if self.__debug:
@@ -57,6 +56,25 @@ class SimpleTFTPlayer(object):
     @property
     def shop(self):
         return self.__shop.copy()
+    
+    @staticmethod
+    def calculate_action_space_size(board_size, bench_size, shop_size):
+        """
+        Calculate the total number of valid actions based on board, bench, and shop sizes.
+        """
+        # Board actions: move within board, move to bench, sell
+        board_actions = board_size * (board_size - 1 + bench_size + 1)
+    
+        # Bench actions: move to board, sell
+        bench_actions = bench_size * (board_size + 1)
+    
+        # Shop actions: buy (equals shop size)
+        shop_actions = shop_size
+    
+        # Additional actions: refresh shop, idle action
+        additional_actions = 2
+    
+        return board_actions + bench_actions + shop_actions + additional_actions
         
     def take_action(self, action: int):
         """
@@ -71,9 +89,7 @@ class SimpleTFTPlayer(object):
             raise ValueError(f"Action must be within the range 0 to {self.__action_positions * self.__action_positions - 1}")
 
         if self.is_alive():
-            action_from = action // self.__action_positions
-            action_to = action % self.__action_positions
-            
+            action_from, action_to = self._map_action_index_to_from_to(action)
             if self.__debug:
                 self.__log.append(f"action: {action}, action from: {action_from}, action to: {action_to}")
             
@@ -81,10 +97,50 @@ class SimpleTFTPlayer(object):
                 self._process_board_actions(action_from, action_to)
             elif action_from < len(self.__board) + len(self.__bench):
                 self._process_bench_actions(action_from, action_to)
-            elif action_from < self.__action_positions - 1:
+            elif action_from < len(self.__board) + len(self.__bench) + len(self.__shop):
                 self._process_shop_actions(action_from, action_to)
             else:
-                self._process_other_actions(action_to)
+                self._process_other_actions(action_from)
+
+    def _map_action_index_to_from_to(self, action_index):
+        """
+        Map an action index to corresponding from and to action positions.
+    
+        :param action_index: Linear index of the action.
+        :param board_size: Size of the board.
+        :param bench_size: Size of the bench.
+        :param shop_size: Size of the shop.
+        :return: Tuple of (action_from, action_to).
+        """
+        board_size, bench_size, shop_size = len(self.__board), len(self.__bench), len(self.__shop)
+        total_board_actions = board_size * (board_size + bench_size)
+        total_bench_actions = bench_size * (board_size + 1)
+    
+        # Check if action is a board action
+        if action_index < total_board_actions:
+            action_from = action_index // (board_size + bench_size)
+            action_to = action_index % (board_size + bench_size)
+            return action_from, action_to
+    
+        # Adjust index for bench actions
+        action_index -= total_board_actions
+    
+        # Check if action is a bench action
+        if action_index < total_bench_actions:
+            action_from = (action_index // (board_size + 1)) + board_size
+            action_to = action_index % (board_size + 1)
+            return action_from, action_to
+    
+        # Adjust index for shop actions
+        action_index -= total_bench_actions
+    
+        # Check if action is a shop action
+        if action_index < shop_size:
+            return board_size + bench_size + action_index, 0
+        action_index -= shop_size
+        # Additional actions (e.g., refresh shop, idle)
+        return board_size + bench_size + shop_size + action_index, 0
+
 
     def _process_board_actions(self, action_from: int, action_to: int):
         """
@@ -127,13 +183,13 @@ class SimpleTFTPlayer(object):
         shop_from = action_from - len(self.__board) - len(self.__bench)
         self.purchase_from_shop(shop_from)
 
-    def _process_other_actions(self, action_to: int):
+    def _process_other_actions(self, action_from: int):
         """
         Process other types of actions.
 
         :param action_to: The target position of the action.
         """
-        if action_to == 0:
+        if action_from == len(self.__board) + len(self.__bench) + len(self.__shop):
             self.refresh_shop()
         # 'pass' for action_to == 1 is already implicit
         
@@ -143,64 +199,72 @@ class SimpleTFTPlayer(object):
 
         :return: A numpy array representing the action mask.
         """
-        mask = np.zeros(self.__action_positions * self.__action_positions)
+        mask = np.zeros(self.__action_positions)
+
         if self.is_alive():
-            action_from = 0
+            action_index = 0
+
+            # Board Actions
             for i_board, pos in enumerate(self.__board):
-                if pos:
-                    self._update_mask_for_board(mask, action_from, i_board)
-                action_from += self.__action_positions
+                action_index = self._update_mask_for_board(mask, action_index, pos)
 
+            # Bench Actions
             for i_bench, pos in enumerate(self.__bench):
-                if pos:
-                    self._update_mask_for_bench(mask, action_from)
-                action_from += self.__action_positions
+                action_index = self._update_mask_for_bench(mask, action_index, pos)
 
+            # Shop Actions
             for i_shop, pos in enumerate(self.__shop):
-                self._update_mask_for_shop(mask, action_from, pos, i_shop)
-                action_from += self.__action_positions
+                action_index = self._update_mask_for_shop(mask, action_index, pos)
 
+            # Additional Actions (e.g., refresh shop, idle)
             if self.__gold > 0:
-                mask[action_from] = 1  # Refresh shop action
+                mask[action_index] = 1  # Refresh shop action
+            action_index += 1
 
-        mask[self.__idle_action] = 1  # Always allow idle action
+            mask[action_index] = 1  # Always allow idle action
+
         return mask
 
-    def _update_mask_for_board(self, mask, action_from, i_board):
+    def _update_mask_for_board(self, mask, action_index, pos):
         """
         Update the action mask for board positions.
-
+        
         :param mask: The action mask to update.
-        :param action_from: The starting action position.
-        :param i_board: The index of the board position being updated.
+        :param action_index: The current action index in the mask.
+        :return: The updated action index.
         """
-        mask[action_from:action_from + len(self.__board) + len(self.__bench) + 1] = 1
-        mask[action_from + i_board] = 0  # Can't move to the same position
-        mask[action_from + len(self.__board) + len(self.__bench)] = 1  # Sell action
+        num_actions = len(self.__board) + len(self.__bench)  # Move within board, to bench, and sell
+        if pos:
+            mask[action_index:action_index + num_actions] = 1
+        return action_index + num_actions
 
-    def _update_mask_for_bench(self, mask, action_from):
+    def _update_mask_for_bench(self, mask, action_index, pos):
         """
         Update the action mask for bench positions.
-
+        
         :param mask: The action mask to update.
-        :param action_from: The starting action position.
+        :param action_index: The current action index in the mask.
+        :return: The updated action index.
         """
-        mask[action_from:action_from + len(self.__board)] = 1
-        mask[action_from + len(self.__board) + len(self.__bench)] = 1  # Sell action
+        num_actions = len(self.__board) + 1  # Move to board and sell
+        if pos:
+            mask[action_index:action_index + num_actions] = 1
+        return action_index + num_actions
 
-    def _update_mask_for_shop(self, mask, action_from, pos, i_shop):
+    def _update_mask_for_shop(self, mask, action_index, pos):
         """
         Update the action mask for shop positions.
-
+        
         :param mask: The action mask to update.
-        :param action_from: The starting action position.
+        :param action_index: The current action index in the mask.
         :param pos: The champion position in the shop.
-        :param i_shop: The index of the shop position being updated.
+        :return: The updated action index.
         """
         if pos and self.__gold > 0:
-            # Check if the bench is not full or there's a matching champion on the board or bench
             if not self.bench_full() or self._has_matching_champion(pos):
-                mask[action_from] = 1
+                mask[action_index] = 1
+        return action_index + 1
+
 
     def _has_matching_champion(self, champion: SimpleTFTChampion) -> bool:
         """

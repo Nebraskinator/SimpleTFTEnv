@@ -57,8 +57,7 @@ class SimpleTFT(object):
                              "Consider increasing champ_copies, num_teams, or reducing board_size, bench_size, or num_players.")
 
 
-        self.__action_space_size = self.__board_size + self.__bench_size + self.__shop_size + 1
-        self.__action_space_size *= self.__action_space_size
+        self.__action_space_size = SimpleTFTPlayer.calculate_action_space_size(self.__board_size, self.__bench_size, self.__shop_size)
         
         self.__observation_shape = (self.__num_players, 
                                     self.__board_size 
@@ -120,7 +119,7 @@ class SimpleTFT(object):
 
         if not self.__actions_until_combat:
             if self.__debug:
-                self.__log.append("combat round")
+                self.log("combat round")
             rewards = self.combat()
             self.__actions_until_combat = self.__actions_per_round
             self.post_combat()
@@ -214,7 +213,7 @@ class SimpleTFT(object):
 
         if self.__debug:
             for p, reward in rewards.items():
-                self.__log.append(f"{p}: received {reward} reward")
+                self.log(f"{p}: received {reward} reward")
 
         return rewards
 
@@ -466,6 +465,13 @@ class SimpleTFT(object):
             ax += self.__board_size
             observation[ax + champ.level] = 1
         return observation 
+    
+    def log(self, line):
+        """
+        Add a line to the log if in debug mode.
+        """
+        if self.__debug:
+            self.__log.append(line)        
     
     def _log_player_states(self):  
         """
