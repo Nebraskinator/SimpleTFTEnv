@@ -120,6 +120,7 @@ class SimpleTFTPlayer(object):
         if action_index < total_board_actions:
             action_from = action_index // (board_size + bench_size)
             action_to = action_index % (board_size + bench_size)
+            action_to += action_to >= action_from
             return action_from, action_to
     
         # Adjust index for bench actions
@@ -129,6 +130,7 @@ class SimpleTFTPlayer(object):
         if action_index < total_bench_actions:
             action_from = (action_index // (board_size + 1)) + board_size
             action_to = action_index % (board_size + 1)
+            action_to += (action_to >= board_size) * 2
             return action_from, action_to
     
         # Adjust index for shop actions
