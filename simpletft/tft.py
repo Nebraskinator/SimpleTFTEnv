@@ -26,7 +26,7 @@ class SimpleTFT(object):
         self.__interest_increment = config.get('interest_increment', 5)
         self.__debug = config.get('debug', False)
         
-        valid_reward_structures = ['game_placement', 'damage', 'mixed']
+        valid_reward_structures = ['game_placement', 'damage', 'mixed', 'power']
         self.__reward_structure = config.get('reward_structure', 'game_placement')  # Default to 'game_placement'
         if self.__reward_structure not in valid_reward_structures:
             raise ValueError(f"Invalid reward structure. Must be one of {valid_reward_structures}")
@@ -126,6 +126,13 @@ class SimpleTFT(object):
         else:
             rewards = {p: 0 for p in self.__players}
             self.__actions_until_combat -= 1
+            
+        if self.__reward_structure == "power":
+            self.calculate_power_rewards(rewards)
+            
+        if self.__debug:
+            for p, reward in rewards.items():
+                self.log(f"{p}: received {reward} reward")
 
         return (self.make_player_observations(), rewards, self.make_acting_player_dict(), 
                 self.make_dones(), self.make_action_masks())
@@ -157,6 +164,9 @@ class SimpleTFT(object):
                 self.__champion_pool.add(champ)
             player.add_gold(self.__gold_per_round + 1)
             player.refresh_shop()
+            
+        if self.__reward_structure == "power":
+            self.update_player_powers()
             
         if self.__debug:
             if self.__log:
@@ -210,10 +220,6 @@ class SimpleTFT(object):
 
             self._update_live_agents()
             self._assign_rewards_based_on_structure(rewards, combat_results)
-
-        if self.__debug:
-            for p, reward in rewards.items():
-                self.log(f"{p}: received {reward} reward")
 
         return rewards
 
@@ -434,15 +440,15 @@ class SimpleTFT(object):
             ax1 = 0
             for i, pos in enumerate(player.board):
                 if pos:
-                    observation[ax1, :] = self.observe_champion(pos)
+                    observation[ax1, :] = self._observe_champion(pos)
                 ax1 += 1
             for i, pos in enumerate(player.bench):
                 if pos:
-                    observation[ax1, :] = self.observe_champion(pos)
+                    observation[ax1, :] = self._observe_champion(pos)
                 ax1 += 1
             for i, pos in enumerate(player.shop):
                 if not public and pos:
-                    observation[ax1, :] = self.observe_champion(pos)
+                    observation[ax1, :] = self._observe_champion(pos)
                 ax1 += 1      
             if not public:              
                 observation[ax1, 0] = np.clip(player.gold / 30, 0, 1)
@@ -450,7 +456,7 @@ class SimpleTFT(object):
             observation[ax1, 2] = self.__actions_until_combat / (self.__actions_per_round - 1)
         return observation 
         
-    def observe_champion(self, champ: SimpleTFTChampion) -> np.array:
+    def _observe_champion(self, champ: SimpleTFTChampion) -> np.array:
         """
         Observe the state of a champion.
         
@@ -465,6 +471,20 @@ class SimpleTFT(object):
             ax += self.__board_size
             observation[ax + champ.level] = 1
         return observation 
+    
+    def calculate_power_rewards(self, rewards: dict):
+        if not hasattr(self, "_SimpleTFT__player_power"):
+            return rewards
+        old_powers = self.__player_power.copy()
+        self.update_player_powers()
+        for p in rewards:
+            rewards[p] += self.__player_power[p] - old_powers[p]
+        
+    def update_player_powers(self):
+        powers = {}
+        for p, player in self.__players.items():
+            powers[p] = player.calculate_board_power()
+        self.__player_power = powers
     
     def log(self, line):
         """

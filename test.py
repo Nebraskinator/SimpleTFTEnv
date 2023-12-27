@@ -5,7 +5,7 @@ import numpy as np
 
 if __name__ == "__main__":
 
-    config = {'reward_structure' : 'mixed',
+    config = {'reward_structure' : 'power',
               'debug' : True}
     log_file_dir = "./"
     env = SimpleTFT(config)
