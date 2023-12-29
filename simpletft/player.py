@@ -101,6 +101,7 @@ class SimpleTFTPlayer(object):
                 self._process_shop_actions(action_from, action_to)
             else:
                 self._process_other_actions(action_from)
+            self.update_board_state()
 
     def _map_action_index_to_from_to(self, action_index):
         """
@@ -517,24 +518,39 @@ class SimpleTFTPlayer(object):
         
     def calculate_board_power(self) -> int:
         """
-        Calculate the total power of the board based on the levels of the champions and their positions.
+        Calculate the total power of the board by summing the power of each champion.
 
         :return: An integer representing the total power of the board.
         """
-        pwr = 0
-        teams = defaultdict(list)
+        self.update_board_state()  # Ensure board state is updated
+        return sum(champ.power for champ in self.__board if champ)
+    
+    def update_board_state(self):
+        """
+        Update the state of each champion on the board, assigning power based on level, preferred position,
+        and bonuses for having teammates with different preferred positions.
+        """
+        # First pass: Assemble teams with unique preferred positions
+        teams = defaultdict(set)
+        for champ in self.__board:
+            if champ:
+                teams[champ.team].add(champ.preferred_position)
+        
+        # Second pass: Calculate power for each champion
         for i, champ in enumerate(self.__board):
             if champ:
-                pwr += champ.level + 1  # Base power from champion level
-                if champ.preferred_position not in teams[champ.team]:
-                    teams[champ.team].append(champ.preferred_position)
+                # Base power from champion level and preferred position bonus
+                champ_power = champ.level + 1
                 if i == champ.preferred_position:
-                    pwr += 1  # Bonus for being in the preferred position
-
-        # Team bonus calculation
-        for team, members in teams.items():
-            pwr += max(0, len(members) - 1)
-        return pwr
+                    champ_power += 1
+        
+                # Team composition bonus
+                team_bonus = len(teams[champ.team]) > 1
+                champ.set_power(champ_power + team_bonus)
+                
+        for champ in self.__bench:
+            if champ:
+                champ.set_power(0)
 
     def add_gold(self, amount: int):
         """

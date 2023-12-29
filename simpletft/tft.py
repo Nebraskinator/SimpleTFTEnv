@@ -40,13 +40,13 @@ class SimpleTFT(object):
             raise ValueError("All configuration values must be positive integers")
 
         # Calculate the maximum attainable champion level
-        max_champ_level = int(np.log2(self.__champ_copies))
+        self.__max_champ_level = int(np.log2(self.__champ_copies))
 
         # Calculate the total number of positions among all players
         total_positions = self.__num_players * (self.__board_size + self.__bench_size)
 
         # Calculate the minimum pool size required
-        min_pool_size = total_positions * (2 ** max_champ_level) + self.__shop_size * self.__num_players
+        min_pool_size = total_positions * (2 ** self.__max_champ_level) + self.__shop_size * self.__num_players
 
         # Calculate the total number of champions available in the pool
         total_champions_available = self.__champ_copies * self.__num_teams * self.__board_size
@@ -56,7 +56,10 @@ class SimpleTFT(object):
             raise ValueError("Insufficient champions in the pool based on the configuration. "
                              "Consider increasing champ_copies, num_teams, or reducing board_size, bench_size, or num_players.")
 
-
+        
+        self.__max_champ_power = self.__max_champ_level + 3
+        self.__max_board_power = self.__board_size * self.__max_champ_power 
+               
         self.__action_space_size = SimpleTFTPlayer.calculate_action_space_size(self.__board_size, self.__bench_size, self.__shop_size)
         
         self.__observation_shape = (self.__num_players, 
@@ -64,7 +67,7 @@ class SimpleTFT(object):
                                         + self.__bench_size 
                                         + self.__shop_size
                                         + 1,
-                                    self.__num_teams + self.__board_size + int(np.log2(self.__champ_copies)) + 1
+                                    self.__num_teams + self.__board_size + int(np.log2(self.__champ_copies)) + 2
                                     )
         
         self.__champion_pool = None
@@ -125,7 +128,8 @@ class SimpleTFT(object):
             self.post_combat()
         else:
             rewards = {p: 0 for p in self.__players}
-            self.__actions_until_combat -= 1
+            
+        self.__actions_until_combat -= 1
             
         if self.__reward_structure == "power":
             self.calculate_power_rewards(rewards)
@@ -164,6 +168,7 @@ class SimpleTFT(object):
                 self.__champion_pool.add(champ)
             player.add_gold(self.__gold_per_round + 1)
             player.refresh_shop()
+            player.update_board_state()
             
         if self.__reward_structure == "power":
             self.update_player_powers()
@@ -454,6 +459,7 @@ class SimpleTFT(object):
                 observation[ax1, 0] = np.clip(player.gold / 30, 0, 1)
             observation[ax1, 1] = player.hp / 10
             observation[ax1, 2] = self.__actions_until_combat / (self.__actions_per_round - 1)
+            observation[ax1, 3] = player.calculate_board_power() / self.__max_board_power
         return observation 
         
     def _observe_champion(self, champ: SimpleTFTChampion) -> np.array:
@@ -470,20 +476,45 @@ class SimpleTFT(object):
             observation[ax + champ.preferred_position] = 1
             ax += self.__board_size
             observation[ax + champ.level] = 1
+            ax += self.__max_champ_level + 1
+            observation[ax] = champ.power / self.__max_champ_power
         return observation 
     
     def calculate_power_rewards(self, rewards: dict):
+        """
+        Calculate and update power-based rewards for each player.
+
+        :param rewards: A dictionary of current rewards for each player.
+        :return: Updated rewards dictionary with power-based reward calculations added.
+        :raises AttributeError: If the __player_power attribute does not exist.
+        """
         if not hasattr(self, "_SimpleTFT__player_power"):
-            return rewards
+            raise AttributeError("Missing player power attribute in SimpleTFT class.")
+        
         old_powers = self.__player_power.copy()
         self.update_player_powers()
+        
         for p in rewards:
-            rewards[p] += self.__player_power[p] - old_powers[p]
+            if p in self.__player_power:
+                rewards[p] += self.__player_power[p] - old_powers.get(p, 0)
+            else:
+                print(f"Warning: Player {p} not found in player power calculations.")
+        
+        return rewards
         
     def update_player_powers(self):
+        """
+        Update the power scores for each player based on their current board state.
+        """
+        if not hasattr(self, "_SimpleTFT__players"):
+            raise AttributeError("Missing players attribute in SimpleTFT class.")
+
         powers = {}
         for p, player in self.__players.items():
-            powers[p] = player.calculate_board_power()
+            if hasattr(player, 'calculate_board_power'):
+                powers[p] = player.calculate_board_power()
+            else:
+                print(f"Warning: Player {p} does not have a calculate_board_power method.")
         self.__player_power = powers
     
     def log(self, line):

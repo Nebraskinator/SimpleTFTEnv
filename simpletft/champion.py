@@ -15,6 +15,7 @@ class SimpleTFTChampion(object):
         self.__preferred_position = preferred_position
         self.__team = team
         self.__level = level
+        self.__power = 0
 
     @property
     def preferred_position(self):
@@ -27,6 +28,10 @@ class SimpleTFTChampion(object):
     @property
     def level(self):
         return self.__level
+    
+    @property
+    def power(self):
+        return self.__power
 
     def set_preferred_position(self, position: int):
         if isinstance(position, int) and position >= 0:
@@ -45,6 +50,22 @@ class SimpleTFTChampion(object):
         Increment the champion's level by 1.
         """
         self.__level += 1
+        
+    def set_power(self, power: int):
+        """
+        Set the power of the champion.
+
+        :param power: An integer representing the new power value of the champion.
+        :raises TypeError: If the power is not an integer.
+        :raises ValueError: If the power is negative.
+        """
+        if not isinstance(power, int):
+            raise TypeError("Power must be an integer")
+
+        if power < 0:
+            raise ValueError("Power cannot be negative")
+
+        self.__power = power
 
     def match(self, other):
         """

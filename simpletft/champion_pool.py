@@ -46,6 +46,7 @@ class SimpleTFTChampionPool(object):
         :param champ: The SimpleTFTChampion instance to be added.
         """
         if not champ.level:
+            champ.set_power(0)
             self.__champions.append(champ)
         else:
             self.__champions.extend(SimpleTFTChampion(champ.preferred_position, champ.team, 0)
